@@ -1,0 +1,8 @@
+.vscode
+venv
+
+tex/*.gen.tex
+tex/*.aux
+tex/*.log
+tex/*.pdf
+tex/*.png
