@@ -4,7 +4,6 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import os
 
-"""
 in_vertices = [
     (6, 8, 0),
     (5, 0, 2),
@@ -16,6 +15,7 @@ in_vertices = [
 
 in_vert_a = (6, -5, 5)
 in_vert_b = (-8, 8, 9)
+
 """
 
 in_vertices = [
@@ -29,6 +29,7 @@ in_vertices = [
 
 in_vert_a = (6, -9, 9)
 in_vert_b = (-7, 8, 6)
+"""
 
 class vec3:
     def __init__(self, x, y, z):
@@ -346,12 +347,12 @@ def minkowski_norm_for_point(a, var_name):
         ["№", "$k_1$", "$k_2$", "$k_3$", "$\sum k$", "$\lambda$"],
         trunc=3,
         split=2,
-        row_colors=["red!20" if str(row[3]) == "inf" else "green!20" if row[3] == 1 else None for row in bary_table]
+        row_colors=["red!20" if str(row[3]) == "inf" else "green!20" if abs(row[3] - 1) < 1e-9 else None for row in bary_table]
     ))
 
     inside_idx = []
     for i in range(len(bary_table)):
-        if bary_table[i][3] == 1:
+        if abs(bary_table[i][3] - 1) < 1e-9:
             inside_idx.append(i)
     
     assert len(inside_idx) == 2
