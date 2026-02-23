@@ -26,18 +26,18 @@
 \paragraph{}
 Вершины \(a\) и \(b\):
 
-\input{input_vertices.tex}
+\input{input_vertices.gen.tex}
 
 \paragraph{}
 Грани:
 
-\input{input_faces.tex}
+\input{input_faces.gen.tex}
 
 \paragraph{}
-Если визуализировать то выглядит так:
+Можно нарисовать эти грани:
 
 \begin{center}
-    \includegraphics[width=0.5\textwidth]{input_poly.png}
+    \includegraphics[width=0.5\textwidth]{input_poly}
 \end{center}
 
 \pagebreak
@@ -47,55 +47,129 @@
 \paragraph{}
 Отражаем вершины во все остальные квадранты, получаем 48 вершин:
 
-\input{all_vertices.tex}
+\input{all_vertices.gen.tex}
 
 \paragraph{}
 Уникальных среди них 18:
 
-\input{unique_vertices.tex}
+\input{unique_vertices.gen.tex}
 
 \paragraph{}
 Добавляем симметричные грани, получается суммарно 32 грани:
 
-\input{all_faces.tex}
+\input{all_faces.gen.tex}
 
 \paragraph{}
-Если визуализировать то выглядит так:
+В качестве самопроверки полученный многогранник можно нарисовать:
 
 \begin{center}
-    \includegraphics[width=0.4\textwidth]{poly.png}
+    \includegraphics[width=0.4\textwidth]{poly}
 \end{center}
 
 \pagebreak
-\paragraph{}
+\subsubsection*{Проверка на выпуклость}
 Для проверки на выпуклость нужны уравнения плоскостей.
 Для этого для каждой грани найдём нормаль плоскости $n = (n_x, n_y, n_z)$ с помощью векторного произведения двух её рёбер,
 а также выберем $p = (x_0, y_0, z_0)$ произвольным образом из списка вершин, которыми эта грань задается. 
-В случае, если нормаль смотрит в сторону нуля ($\langle p, n \rangle < 0$),
+В случае, если вычисленная нормаль смотрит в сторону нуля ($\langle p, n \rangle < 0$),
 то перевернём её. Уравнение плоскости в таком случае будет:
 
 \[n_x(x-x_0)+n_y(y-y_0)+n_z(z-z_0) = 0 \]
-
 \[n_x x - n_x x_0 + n_y y - n_y y_0 + n_z z - n_z z_0 = 0 \]
-
 \[n_x x + n_y y + n_z z - n_x x_0 - n_y y_0 - n_z z_0 = 0 \]
 
 \[
 \begin{cases}
     Ax + By + Cz + D = 0 \\
-    A = n_x, B = n_y, C = b_z \\
+    A = n_x, B = n_y, C = n_z \\
     D = - n_x x_0 - n_y y_0 - n_z z_0
 \end{cases}
 \]
 
 Получаем такие уравнения плоскостей:
 
-\input{planes.tex}
+\input{planes.gen.tex}
+
+\paragraph{}
+Можно также нарисовать рисунок, чтобы лишний раз убедиться, что нормали смотрят наружу:
 
 \begin{center}
-    \includegraphics[width=0.3\textwidth]{poly_normals_1.png}
-    \includegraphics[width=0.3\textwidth]{poly_normals_2.png}
-    \includegraphics[width=0.3\textwidth]{poly_normals_3.png}
+    \includegraphics[width=0.5\textwidth]{poly_normals}
 \end{center}
+
+\pagebreak
+Теперь координаты каждой вершины (из списка уникальных вершин, которых 18 штук) подставим
+в уравнения всех плоскостей:
+
+\input{plane_checks.gen.tex}
+
+\paragraph{}
+Полученные значения не больше нуля, значит все точки лежат в отрицательных полуплоскостях,
+значит многогранник выпуклый.
+
+\pagebreak
+\subsubsection*{Норма Минковского}
+
+\paragraph{}
+Для каждой грани найдём расстояние от центра координат до плоскости грани и
+расстояние от центра координат до точки $a$ по направлению нормали плоскости.
+Чтобы получить точку, лежащую в плоскости грани, поделим её на расстояние от центра
+до неё самой и умножим на расстояние от центра до плоскости грани:
+
+\[\hat P = P \cdot \frac{\langle P_0, n \rangle}{\langle a, n \rangle}, \]
+где $P_0$ -- некоторая точка, лежащая в плоскости грани.
+
+\paragraph{}
+Чтобы найти координаты точки $P$ в барицентрических координатах треугольника $ABC$ нужно:
+\begin{itemize}
+    \item Найти площадь треугольника $ABC$ ($S_{ABC}$)
+    \item Найти площади треугольников, которые образует точка $P$ с вершинами треугольника $ABC$
+          ($S_{PBC}$, $S_{PCA}$, $S_{PBA}$)
+    \item $k_1 = S_{PBC} / S_{ABC}$
+    \item $k_2 = S_{PCA} / S_{ABC}$
+    \item $k_3 = S_{PBA} / S_{ABC}$
+\end{itemize}
+
+\paragraph{}
+Если точка лежит внутри треугольника, то треугольники не будут пересекаться и сумма $k_1+k_2+k_3$ будет равна 1.
+
+\paragraph{}
+Площадь треугольника вычисляется как проекция векторного произведения двух рёбер треугольника на его нормаль.
+Например, для треугольника $ABC$ площадь будет $S_{ABC} = \langle n, (B-A) \times (C-A) \rangle$.
+На всякий случай скалярное произведение будем брать по модулю, мало ли нормаль была перевернута.
+
+Вычислим барицентрические координаты для каждой грани
+
+\input{bary_table_a.gen.tex}
+
+\pagebreak
+\paragraph{}
+Среди всех $\hat P$ внутри треугольника лежат только две.
+Прямая, проходящая через точку $a$ и центр координат, проходит многоугольник насквозь.
+По определению нужна точка с наибольшей $\lambda$. Можно её нарисовать:
+
+\begin{center}
+    \includegraphics[width=0.5\textwidth]{minkowski_norm_a}
+\end{center}
+
+\paragraph{}
+Таким образом, \input{minkowski_norm_a.gen.tex}
+
+\pagebreak
+\paragraph{}
+Аналогичные вычисления можно проделать и для точки $b$:
+
+\input{bary_table_b.gen.tex}
+
+\begin{center}
+    \includegraphics[width=0.5\textwidth]{minkowski_norm_b}
+\end{center}
+
+\paragraph{}
+Красным цветом выделены строчки, соответствующие граням, нормаль которых оказалась перпендикулярна
+вектору из начала координат в точку $b$. На эти плоскости этих граней точку $b$ спроецировать впринципе нельзя. 
+
+\paragraph{}
+Таким образом, \input{minkowski_norm_b.gen.tex}.
 
 \end{document}
