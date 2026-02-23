@@ -1,6 +1,4 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import os
 
@@ -16,20 +14,12 @@ in_vertices = [
 in_vert_a = (6, -5, 5)
 in_vert_b = (-8, 8, 9)
 
-"""
-
-in_vertices = [
-    (3, 3, 0),
-    (5, 0, 3),
-    (0, 6, 9),
-    (41/8, 0, 0),
-    (0, 13/2, 0),
-    (0, 0, 36)
-]
-
-in_vert_a = (6, -9, 9)
-in_vert_b = (-7, 8, 6)
-"""
+class Plane:
+    def __init__(self, a, b, c, d):
+        self.a = a
+        self.b = b
+        self.c = c
+        self.d = d
 
 class vec3:
     def __init__(self, x, y, z):
@@ -80,24 +70,6 @@ def barycentric(a, b, c, normal, p):
     k3 = area_pba / area_abc
     return vec3(k1, k2, k3)
 
-in_faces = [
-    (0, 1, 2),
-    (0, 1, 3),
-    (0, 2, 4),
-    (1, 2, 5)
-]
-
-kvd_signs = [
-    [ 1,  1,  1],
-    [-1,  1,  1],
-    [ 1, -1,  1],
-    [ 1,  1, -1],
-    [-1, -1,  1],
-    [-1,  1, -1],
-    [ 1, -1, -1],
-    [-1, -1, -1]
-]
-
 def tab_header(header):
     return "\\begin{tabular}{" + "|" + "|".join(["c"] * len(header)) + "|}" \
          + " \\hline" \
@@ -116,10 +88,12 @@ def str_table(vals, header, rows = None, trunc=0, split=1, row_colors=None):
             for i in range(split)
         ])
     
-    copy_vals = vals[::1]
-    if trunc > 0:
-        for i in range(len(copy_vals)):
-            copy_vals[i] = [round(x, trunc) for x in copy_vals[i]]
+    copy_vals = []
+    for row in vals:
+        if trunc > 0:
+            copy_vals.append([str(round(x, trunc)) for x in row])
+        else:
+            copy_vals.append([str(x) for x in row])
 
     lines = []
     lines.append("\\begingroup ")
@@ -138,7 +112,7 @@ def str_table(vals, header, rows = None, trunc=0, split=1, row_colors=None):
         row_color += " \\cellcolor{blue!5}"
         
         row = row_color + rows[i]
-        row += " & " + " & ".join([str(copy_vals[i][j]) for j in range(len(header) - 1)]) + " \\\\"
+        row += " & " + " & ".join([copy_vals[i][j] for j in range(len(header) - 1)]) + " \\\\"
         lines.append(row)
 
     
@@ -148,33 +122,74 @@ def str_table(vals, header, rows = None, trunc=0, split=1, row_colors=None):
     
     return "\n".join(lines)
 
+in_faces = [
+    (0, 1, 2),
+    (0, 1, 3),
+    (0, 2, 4),
+    (1, 2, 5)
+]
+
+kvd_signs = [
+    [ 1,  1,  1],
+    [-1,  1,  1],
+    [ 1, -1,  1],
+    [ 1,  1, -1],
+    [-1, -1,  1],
+    [-1,  1, -1],
+    [ 1, -1, -1],
+    [-1, -1, -1]
+]
+
+open("tex/input_vertices.gen.tex", "w").write(str_table(
+    in_vertices + [in_vert_a, in_vert_b],
+    ["№", "$x$", "$y$", "$z$"],
+    rows=["$v_1$", "$v_2$", "$v_3$", "$v_4$", "$v_5$", "$v_6$", "$a$", "$b$"],
+    trunc=4
+))
+
+open("tex/input_faces.gen.tex", "w").write(str_table(
+    [[f[0] + 1, f[1] + 1, f[2] + 1] for f in in_faces],
+    ["№", "$v_1$", "$v_2$", "$v_3$"],
+))
 
 vertices = []
 for k in kvd_signs:
     for v in in_vertices:
         vertices.append((v[0]*k[0], v[1]*k[1], v[2]*k[2]))
 
-unique_vertices = []
+open("tex/all_vertices.gen.tex", "w").write(str_table(
+    vertices,
+    ["№", "$x$", "$y$", "$z$"],
+    trunc=4,
+    split=3
+))
 
+unique_vertices = []
 for v in vertices:
     if not v in unique_vertices:
         unique_vertices.append(v)
+
+open("tex/unique_vertices.gen.tex", "w").write(str_table(
+    unique_vertices,
+    ["№", "$x$", "$y$", "$z$"],
+    trunc=4,
+    split=3
+))
 
 faces = []
 for k in range(len(kvd_signs)):
     for f in in_faces:
         faces.append((f[0] + k*6, f[1] + k*6, f[2] + k*6))
 
-class Plane:
-    def __init__(self, a, b, c, d):
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
+open("tex/all_faces.gen.tex", "w").write(str_table(
+    [[f[0] + 1, f[1] + 1, f[2] + 1] for f in faces],
+    ["№", "$v_1$", "$v_2$", "$v_3$"],
+    rows=[f"$v_{{{idx+1}}}$" for idx in range(len(faces))],
+    split=4
+))
 
 pl_normals = []
 pl_points = []
-
 planes = []
 for f in faces:
     p1 = vec3(*vertices[f[0]])
@@ -189,6 +204,14 @@ for f in faces:
     pl_points.append((p1 + p2 + p3) / 3)
     
     planes.append(Plane(n.x, n.y, n.z, -dot(n, p1)))
+
+open("tex/planes.gen.tex", "w").write(str_table(
+    [[p.a, p.b, p.c, p.d] for p in planes],
+    ["№", "$A$", "$B$", "$C$", "$D$"],
+    trunc=4,
+    split=2
+))
+
 
 plane_checks = []
 for p in planes:
@@ -205,52 +228,6 @@ open("tex/plane_checks.gen.tex", "w").write(str_table(
     trunc=1,
 ))
 
-open("tex/planes.gen.tex", "w").write(str_table(
-    [[p.a, p.b, p.c, p.d] for p in planes],
-    ["№", "$A$", "$B$", "$C$", "$D$"],
-    trunc=4,
-    split=2
-))
-
-open("tex/in_vertices.gen.tex", "w").write(str_table(
-    in_vertices,
-    ["№", "$x$", "$y$", "$z$"],
-    trunc=4
-))
-
-open("tex/input_vertices.gen.tex", "w").write(str_table(
-    in_vertices + [in_vert_a, in_vert_b],
-    ["№", "$x$", "$y$", "$z$"],
-    rows=["$v_1$", "$v_2$", "$v_3$", "$v_4$", "$v_5$", "$v_6$", "$a$", "$b$"],
-    trunc=4
-))
-
-open("tex/input_faces.gen.tex", "w").write(str_table(
-    [[f[0] + 1, f[1] + 1, f[2] + 1] for f in in_faces],
-    ["№", "$v_1$", "$v_2$", "$v_3$"],
-))
-
-open("tex/all_faces.gen.tex", "w").write(str_table(
-    [[f[0] + 1, f[1] + 1, f[2] + 1] for f in faces],
-    ["№", "$v_1$", "$v_2$", "$v_3$"],
-    rows=[f"$v_{{{idx+1}}}$" for idx in range(len(faces))],
-    split=4
-))
-
-open("tex/unique_vertices.gen.tex", "w").write(str_table(
-    unique_vertices,
-    ["№", "$x$", "$y$", "$z$"],
-    trunc=4,
-    split=3
-))
-
-open("tex/all_vertices.gen.tex", "w").write(str_table(
-    vertices,
-    ["№", "$x$", "$y$", "$z$"],
-    trunc=4,
-    split=3
-))
-
 def image(callable, userdata, filename, elev, azim):
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, projection='3d')
@@ -263,17 +240,15 @@ def image(callable, userdata, filename, elev, azim):
     ax.set_zlabel('Z')
 
     filename2 = filename[::-1].replace(".", "_not_cropped."[::-1], 1)[::-1]
-    plt.savefig(filename2, dpi=100)
-    #plt.show()
+    plt.savefig(filename2, dpi=200)
     plt.close()
 
     os.system(f"convert {filename2} -trim +repage {filename}")
     
 
 def draw_poly(ax, userdata):
-    verts = np.array(userdata["verts"])
-    faces = np.array(userdata["faces"])
-    
+    verts = userdata["verts"]
+    faces = userdata["faces"]
     polys = [[verts[face[0]], verts[face[1]], verts[face[2]]] for face in faces]
     
     poly_collection = Poly3DCollection(polys, alpha=0.7, edgecolors='k', linewidths=0.5)
@@ -305,7 +280,6 @@ def draw_poly_barycentric(ax, userdata):
     ax.plot([v1.x], [v1.y], [v1.z], color="red", marker="o", markersize=5, zorder=10)
     
 image(draw_poly, {"verts": in_vertices, "faces": in_faces}, "tex/input_poly.png", 15, 30)
-image(draw_poly, {"verts": vertices, "faces": faces}, "tex/poly.png", 15, 30)
 image(draw_poly, {"verts": vertices, "faces": faces}, "tex/poly.png", 15, 30)
 
 image(draw_poly_with_normals, {"verts": vertices, "faces": faces}, "tex/poly_normals.png", 0, 90)
