@@ -134,13 +134,10 @@
 Если точка лежит внутри треугольника, то внутренние треугольники не будут пересекаться и сумма $k_1+k_2+k_3$ будет равна 1.
 
 \paragraph{}
-Площадь треугольника вычисляется как проекция векторного произведения двух рёбер треугольника на его нормаль.
+Площадь треугольника -- это половина нормы векторного произведения двух его рёбер.
 Например, для треугольника $ABC$ площадь будет:
 
-\[ S_{ABC} = \langle n, (B-A) \times (C-A) \rangle \]
-
-\paragraph{}
-На всякий случай скалярное произведение будем брать по модулю, мало ли нормаль была перевернута.
+\[ S_{ABC} = \frac{1}{2} (B-A) \times (C-A) \]
 
 \paragraph{}
 Вычислим барицентрические координаты для каждой грани
@@ -176,5 +173,37 @@
 
 \paragraph{}
 Таким образом, \input{minkowski_norm_b.gen.tex}.
+
+
+\pagebreak
+\paragraph{}
+Аналогичные вычисления можно проделать и для точки $a + b$:
+
+\input{bary_table_sum.gen.tex}
+
+\begin{center}
+    \includegraphics[width=0.5\textwidth]{minkowski_norm_sum}
+\end{center}
+
+%\paragraph{}
+%Красным цветом выделены строчки, соответствующие граням, нормаль которых оказалась перпендикулярна
+%вектору из начала координат в точку $b$. На плоскости этих граней точку $b$ спроецировать впринципе нельзя. 
+
+\paragraph{}
+Таким образом, \input{minkowski_norm_sum.gen.tex}.
+
+\pagebreak
+\paragraph{}
+Получили, что 
+\input{minkowski_norm_a.gen.tex},
+\input{minkowski_norm_b.gen.tex},
+\input{minkowski_norm_sum.gen.tex}.
+
+\paragraph{}
+\input{triangle_check.gen.tex}.
+
+\begin{center}
+    \includegraphics[width=0.5\textwidth]{triangle}
+\end{center}
 
 \end{document}

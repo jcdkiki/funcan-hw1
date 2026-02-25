@@ -60,10 +60,10 @@ def dot(v1, v2):
     return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z
 
 def barycentric(a, b, c, normal, p):
-    area_abc = abs(dot(normal, cross(b - a, c - a)))
-    area_pbc = abs(dot(normal, cross(b - p, c - p)))
-    area_pca = abs(dot(normal, cross(c - p, a - p)))
-    area_pba = abs(dot(normal, cross(b - p, a - p)))
+    area_abc = 0.5 * length(cross(b - a, c - a))
+    area_pbc = 0.5 * length(cross(b - p, c - p))
+    area_pca = 0.5 * length(cross(c - p, a - p))
+    area_pba = 0.5 * length(cross(b - p, a - p))
 
     k1 = area_pbc / area_abc
     k2 = area_pca / area_abc
@@ -284,7 +284,9 @@ image(draw_poly, {"verts": vertices, "faces": faces}, "tex/poly.png", 15, 30)
 
 image(draw_poly_with_normals, {"verts": vertices, "faces": faces}, "tex/poly_normals.png", 0, 90)
 
-def minkowski_norm_for_point(a, var_name):
+norms = {}
+
+def minkowski_norm_for_point(a, suffix, var_name):
     a = vec3(*a)
 
     bary_table = []
@@ -316,7 +318,7 @@ def minkowski_norm_for_point(a, var_name):
             )
             bary_table.append([k.x, k.y, k.z, k.x + k.y + k.z, dist_a / dist_plane])
 
-    open(f"tex/bary_table_{var_name}.gen.tex", "w").write(str_table(
+    open(f"tex/bary_table_{suffix}.gen.tex", "w").write(str_table(
         bary_table,
         ["№", "$k_1$", "$k_2$", "$k_3$", "$\sum k$", "$\lambda$"],
         trunc=3,
@@ -337,9 +339,11 @@ def minkowski_norm_for_point(a, var_name):
     l2 = bary_table[idx2][4]
     norm = max(l1, l2)
 
+    norms[var_name] = round(norm, 4)
+
     v1 = projected_points[idx1] if l1 > l2 else projected_points[idx2]
 
-    open(f"tex/minkowski_norm_{var_name}.gen.tex", "w")\
+    open(f"tex/minkowski_norm_{suffix}.gen.tex", "w")\
         .write(f"$\\left\\lVert {var_name} \\right\\rVert = {round(norm, 4)}$")
 
     image(draw_poly_barycentric, {
@@ -347,7 +351,33 @@ def minkowski_norm_for_point(a, var_name):
         "faces": faces,
         "p": a,
         "v1": v1
-    }, f"tex/minkowski_norm_{var_name}.png", 20, -80)
+    }, f"tex/minkowski_norm_{suffix}.png", 20, -80)
 
-minkowski_norm_for_point(in_vert_a, "a")
-minkowski_norm_for_point(in_vert_b, "b")
+minkowski_norm_for_point(in_vert_a, "a", "a")
+minkowski_norm_for_point(in_vert_b, "b", "b")
+minkowski_norm_for_point(list(vec3(*in_vert_a) + vec3(*in_vert_b)), "sum", "a+b")
+
+def draw_poly_with_tri(ax, userdata):
+    draw_poly(ax, userdata)
+
+    p = userdata["points"]
+    a = p[0]
+    b = p[1]
+    c = p[2]
+    ax.plot([a.x, b.x, c.x, a.x], [a.y, b.y, c.y, a.y], [a.z, b.z, c.z, a.z], color="black", linewidth=1, zorder=10)
+
+
+image(draw_poly_with_tri, {
+        "verts": vertices,
+        "faces": faces,
+        "points": [vec3(*in_vert_a), vec3(*in_vert_b), vec3(*in_vert_a) + vec3(*in_vert_b)]
+    }, f"tex/triangle.png", 20, -80)
+
+def strnorm(x):
+    return f"\\left\\lVert {x} \\right\\rVert"
+
+assert norms["a"] + norms["b"] >= norms["a+b"]
+
+open("tex/triangle_check.gen.tex", "w").write(
+    f"$ {strnorm('a+b')} = {norms['a+b']} \\le {strnorm('a')} + {strnorm('b')} = {norms['a'] + norms['b']}$" 
+)
