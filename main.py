@@ -270,7 +270,6 @@ def draw_poly_with_normals(ax, userdata):
 def draw_poly_barycentric(ax, userdata):
     draw_poly(ax, userdata)
 
-
     p = userdata["p"]
     v1 = userdata["v1"]
     
@@ -279,7 +278,21 @@ def draw_poly_barycentric(ax, userdata):
 
     ax.plot([p.x], [p.y], [p.z], color="black", marker="o", markersize=3, zorder=10)
     ax.plot([v1.x], [v1.y], [v1.z], color="red", marker="o", markersize=5, zorder=10)
-    
+
+def draw_poly_bary_basis(ax, userdata):
+    draw_poly(ax, userdata)
+
+    b1, b2, b3 = userdata["b1"], userdata["b2"], userdata["b3"]
+    a1, a2, a3 = userdata["a1"], userdata["a2"], userdata["a3"]
+
+    ax.plot([0, 10*b1.x], [0, 10*b1.y], [0, 10*b1.z], color="red", linewidth=1, zorder=10)
+    ax.plot([0, 10*b2.x], [0, 10*b2.y], [0, 10*b2.z], color="red", linewidth=1, zorder=10)
+    ax.plot([0, 10*b3.x], [0, 10*b3.y], [0, 10*b3.z], color="red", linewidth=1, zorder=10)
+
+    ax.plot([0, a1.x], [0, a1.y], [0, a1.z], color="blue", linewidth=1, zorder=10)
+    ax.plot([0, a2.x], [0, a2.y], [0, a2.z], color="blue", linewidth=1, zorder=10)
+    ax.plot([0, a3.x], [0, a3.y], [0, a3.z], color="blue", linewidth=1, zorder=10)
+
 image(draw_poly, {"verts": in_vertices, "faces": in_faces}, "tex/input_poly.png", 15, 30)
 image(draw_poly, {"verts": vertices, "faces": faces}, "tex/poly.png", 15, 30)
 
@@ -292,6 +305,21 @@ def sgn(x):
 
 def fml(s):
     return "$" + str(s) + "$"
+
+def barycentric_basis(f):
+    a1 = vec3(*in_vertices[f[0]])
+    a2 = vec3(*in_vertices[f[1]])
+    a3 = vec3(*in_vertices[f[2]])
+    
+    B1 = cross(a2, a3)
+    B2 = cross(a1, a3)
+    B3 = cross(a1, a2)
+
+    b1 = B1 / dot(B1, a1) if dot(B1, a1) != 0 else float("inf")
+    b2 = B2 / dot(B2, a2) if dot(B2, a2) != 0 else float("inf")
+    b3 = B3 / dot(B3, a3) if dot(B3, a3) != 0 else float("inf")
+    return a1, a2, a3, B1, B2, B3, b1, b2, b3
+
 
 def minkowski_norm_for_point(a, suffix, var_name):
     new_a = vec3(*[abs(x) for x in a])
@@ -309,18 +337,8 @@ def minkowski_norm_for_point(a, suffix, var_name):
     
     for f_idx in range(4):
         f = in_faces[f_idx]
-        a1 = vec3(*in_vertices[f[0]])
-        a2 = vec3(*in_vertices[f[1]])
-        a3 = vec3(*in_vertices[f[2]])
+        a1, a2, a3, B1, B2, B3, b1, b2, b3 = barycentric_basis(f)
         
-        B1 = cross(a2, a3)
-        B2 = cross(a1, a3)
-        B3 = cross(a1, a2)
-
-        b1 = B1 / dot(B1, a1) if dot(B1, a1) != 0 else float("inf")
-        b2 = B2 / dot(B2, a2) if dot(B2, a2) != 0 else float("inf")
-        b3 = B3 / dot(B3, a3) if dot(B3, a3) != 0 else float("inf")
-
         x = vec3(dot(new_a, b1), dot(new_a, b2), dot(new_a, b3))
         l = x.x+x.y+x.z
 
@@ -366,6 +384,14 @@ def minkowski_norm_for_point(a, suffix, var_name):
     norms[var_name] = round(norm, 4)
     v1 = projected_points[idx]
 
+    a1, a2, a3, B1, B2, B3, b1, b2, b3 = barycentric_basis(in_faces[idx])
+
+    image(draw_poly_bary_basis, {
+        "verts": vertices,
+        "faces": faces,
+        "a1": a1, "a2": a2, "a3": a3,
+        "b1": b1, "b2": b2, "b3": b3,
+    }, f"tex/bary_basis_{suffix}.png", 20, 45)
 
     open(f"tex/minkowski_norm_{suffix}.gen.tex", "w")\
         .write(f"$\\left\\lVert {var_name} \\right\\rVert = {round(norm, 4)}$")
