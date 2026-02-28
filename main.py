@@ -41,6 +41,12 @@ class vec3:
     
     def __iter__(self):
         return iter([self.x, self.y, self.z])
+    
+    def __repr__(self):
+        return f"({round(self.x, 2)}, {round(self.y, 2)}, {round(self.z, 2)})"
+
+    def __repr__(self):
+        return f"({round(self.x, 2)}, {round(self.y, 2)}, {round(self.z, 2)})"
 
 def cross(v1, v2):
     result = vec3(
@@ -59,23 +65,20 @@ def normalize(v):
 def dot(v1, v2):
     return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z
 
-def barycentric(a, b, c, normal, p):
-    area_abc = 0.5 * length(cross(b - a, c - a))
-    area_pbc = 0.5 * length(cross(b - p, c - p))
-    area_pca = 0.5 * length(cross(c - p, a - p))
-    area_pba = 0.5 * length(cross(b - p, a - p))
-
-    k1 = area_pbc / area_abc
-    k2 = area_pca / area_abc
-    k3 = area_pba / area_abc
-    return vec3(k1, k2, k3)
-
 def tab_header(header):
     return "\\begin{tabular}{" + "|" + "|".join(["c"] * len(header)) + "|}" \
          + " \\hline" \
          + " \\rowcolor{blue!15}" \
          + " \\bfseries " + " & ".join(header) + " \\\\" \
          + " \\hline"
+
+def format_val(val, trunc):
+    if trunc == 0 or not isinstance(val, float):
+        return str(val)
+
+    if abs(val) < 1e-9:
+        return "0"
+    return str(round(val, trunc))
 
 def str_table(vals, header, rows = None, trunc=0, split=1, row_colors=None):    
     if rows == None:
@@ -90,11 +93,8 @@ def str_table(vals, header, rows = None, trunc=0, split=1, row_colors=None):
     
     copy_vals = []
     for row in vals:
-        if trunc > 0:
-            copy_vals.append([str(round(x, trunc)) for x in row])
-        else:
-            copy_vals.append([str(x) for x in row])
-
+        copy_vals.append([format_val(x, trunc) for x in row])
+        
     lines = []
     lines.append("\\begingroup ")
     
@@ -270,10 +270,11 @@ def draw_poly_with_normals(ax, userdata):
 def draw_poly_barycentric(ax, userdata):
     draw_poly(ax, userdata)
 
+
     p = userdata["p"]
     v1 = userdata["v1"]
-
-    ax.plot([0, v1.x], [0, v1.y], [0, v1.z], color="black", linewidth=1)
+    
+    ax.plot([0, v1.x], [0, v1.y], [0, v1.z], color="black", linewidth=1, zorder=0)
     ax.plot([v1.x, p.x], [v1.y, p.y], [v1.z, p.z], color="black", linewidth=1, zorder=10)
 
     ax.plot([p.x], [p.y], [p.z], color="black", marker="o", markersize=3, zorder=10)
@@ -282,75 +283,100 @@ def draw_poly_barycentric(ax, userdata):
 image(draw_poly, {"verts": in_vertices, "faces": in_faces}, "tex/input_poly.png", 15, 30)
 image(draw_poly, {"verts": vertices, "faces": faces}, "tex/poly.png", 15, 30)
 
-image(draw_poly_with_normals, {"verts": vertices, "faces": faces}, "tex/poly_normals.png", 0, 90)
+image(draw_poly_with_normals, {"verts": vertices, "faces": faces}, "tex/poly_normals.png", 0, -90)
 
 norms = {}
 
-def minkowski_norm_for_point(a, suffix, var_name):
-    a = vec3(*a)
+def sgn(x):
+    return -1 if x < 0 else (1 if x > 0 else 0)
 
+def fml(s):
+    return "$" + str(s) + "$"
+
+def minkowski_norm_for_point(a, suffix, var_name):
+    new_a = vec3(*[abs(x) for x in a])
+
+    if a != new_a:
+        open(f"tex/change_var_{suffix}.gen.tex", "w")\
+            .write(f"Для вычисления нормы переносим ${var_name}$ в первый квадрант. $ {var_name} = ({new_a.x}, {new_a.y}, {new_a.z})$")
+    else:
+        open(f"tex/change_var_{suffix}.gen.tex", "w").write("")
+
+    vectors=[]
+    vectors2=[]
     bary_table = []
     projected_points = []
     
-    for f_idx in range(len(planes)):
-        n = pl_normals[f_idx]
-        p1 = vec3(*pl_points[f_idx])
+    for f_idx in range(4):
+        f = in_faces[f_idx]
+        a1 = vec3(*in_vertices[f[0]])
+        a2 = vec3(*in_vertices[f[1]])
+        a3 = vec3(*in_vertices[f[2]])
         
-        dist_plane = dot(p1, n)
-        dist_a = dot(a, n)
+        B1 = cross(a2, a3)
+        B2 = cross(a1, a3)
+        B3 = cross(a1, a2)
 
-        if dist_a == 0:
-            inf = float("inf")
-            v = vec3(inf, inf, inf)
-            projected_points.append(v)
-            k = vec3(inf, inf, inf)
-            bary_table.append([k.x, k.y, k.z, k.x + k.y + k.z, inf])
-            
-        else:
-            v = a * (dist_plane / dist_a)
-            projected_points.append(v)
-            
-            k = barycentric(
-                vec3(*vertices[faces[f_idx][0]]),
-                vec3(*vertices[faces[f_idx][1]]),
-                vec3(*vertices[faces[f_idx][2]]),
-                n, v
-            )
-            bary_table.append([k.x, k.y, k.z, k.x + k.y + k.z, dist_a / dist_plane])
+        b1 = B1 / dot(B1, a1) if dot(B1, a1) != 0 else float("inf")
+        b2 = B2 / dot(B2, a2) if dot(B2, a2) != 0 else float("inf")
+        b3 = B3 / dot(B3, a3) if dot(B3, a3) != 0 else float("inf")
+
+        x = vec3(dot(new_a, b1), dot(new_a, b2), dot(new_a, b3))
+        l = x.x+x.y+x.z
+
+        projected_a = new_a / l
+        x2 = vec3(dot(projected_a, b1), dot(projected_a, b2), dot(projected_a, b3))
+        print(x2.x + x2.y + x2.z, "!!!!!!!!")
+
+        projected_points.append(projected_a)
+        
+        vectors.append([
+            fml(a1), fml(a2), fml(a3),
+            fml(B1), fml(B2), fml(B3)])
+        
+        vectors2.append([ fml(b1), fml(b2), fml(b3)])
+        
+        bary_table.append([x.x, x.y, x.z, l])
 
     open(f"tex/bary_table_{suffix}.gen.tex", "w").write(str_table(
-        bary_table,
-        ["№", "$k_1$", "$k_2$", "$k_3$", "$\sum k$", "$\lambda$"],
-        trunc=3,
-        split=2,
-        row_colors=["red!20" if str(row[3]) == "inf" else "green!20" if abs(row[3] - 1) < 1e-9 else None for row in bary_table]
-    ))
+            vectors,
+            ["№", "$a_1$", "$a_2$", "$a_3$", "$B_1$", "$B_2$", "$B_3$"],
+            trunc=3, split=1,
+        ) + "\n\n" + str_table(
+            vectors2,
+            ["№", "$b_1$", "$b_2$", "$b_3$"],
+            trunc=3, split=1
+        ) + "\n\n" + str_table(
+            bary_table,
+            ["№", "$k_1$", "$k_2$", "$k_3$", "$\sum k$"],
+            trunc=3, split=1,
+            row_colors=["green!20" if all([x >= 0 for x in row[:3]]) else None for row in bary_table],
+        )
+    )
 
     inside_idx = []
     for i in range(len(bary_table)):
-        if abs(bary_table[i][3] - 1) < 1e-9:
+        if all([x >= 0 for x in bary_table[i][:3]]):
             inside_idx.append(i)
     
-    assert len(inside_idx) == 2
+    assert len(inside_idx) == 1
 
-    idx1 = inside_idx[0]
-    idx2 = inside_idx[1]
-    l1 = bary_table[idx1][4]
-    l2 = bary_table[idx2][4]
-    norm = max(l1, l2)
-
+    idx = inside_idx[0]
+    norm = bary_table[idx][-1]
     norms[var_name] = round(norm, 4)
+    v1 = projected_points[idx]
 
-    v1 = projected_points[idx1] if l1 > l2 else projected_points[idx2]
 
     open(f"tex/minkowski_norm_{suffix}.gen.tex", "w")\
         .write(f"$\\left\\lVert {var_name} \\right\\rVert = {round(norm, 4)}$")
 
+    v1_signed = vec3(v1.x * sgn(a[0]), v1.y * sgn(a[1]), v1.z * sgn(a[2]))
+    
     image(draw_poly_barycentric, {
         "verts": vertices,
         "faces": faces,
-        "p": a,
-        "v1": v1
+        "p": vec3(*a),
+        "v1": v1_signed,
     }, f"tex/minkowski_norm_{suffix}.png", 20, -80)
 
 minkowski_norm_for_point(in_vert_a, "a", "a")
